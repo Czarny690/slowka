@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Słówka Quiz</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f0e17;--surface:#1a1828;--card:#211f33;
+  --accent:#ff6b35;--accent2:#a8ff78;
+  --text:#fffffe;--muted:#7c7a93;
+  --correct:#a8ff78;--wrong:#ff4d6d;--border:#2e2c45;
+}
+html,body{height:100%}
+body{
+  font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);
+  min-height:100dvh;display:flex;flex-direction:column;
+  align-items:center;justify-content:flex-start;
+  padding:20px 16px 40px;overflow-x:hidden;
+}
+body::before{content:'';position:fixed;top:-200px;left:-200px;width:500px;height:500px;
+  background:radial-gradient(circle,rgba(255,107,53,.12) 0%,transparent 70%);
+  pointer-events:none;z-index:0}
+body::after{content:'';position:fixed;bottom:-200px;right:-200px;width:400px;height:400px;
+  background:radial-gradient(circle,rgba(168,255,120,.08) 0%,transparent 70%);
+  pointer-events:none;z-index:0}
+.container{position:relative;z-index:1;width:100%;max-width:560px}
+
+/* HEADER */
+header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;gap:8px}
+.logo{font-size:1.1rem;font-weight:800;letter-spacing:-.02em;color:var(--accent);flex-shrink:0}
+.logo span{color:var(--text)}
+.progress-wrap{display:flex;align-items:center;gap:8px;flex:1;justify-content:center;min-width:0}
+.progress-label{font-family:'DM Mono',monospace;font-size:.7rem;color:var(--muted);white-space:nowrap}
+.progress-bar{width:80px;height:4px;background:var(--border);border-radius:4px;overflow:hidden;flex-shrink:0}
+@media(min-width:400px){.progress-bar{width:120px}}
+.progress-fill{height:100%;background:var(--accent);border-radius:4px;transition:width .5s cubic-bezier(.4,0,.2,1)}
+.score-badge{font-family:'DM Mono',monospace;font-size:.72rem;background:var(--card);border:1px solid var(--border);padding:4px 10px;border-radius:20px;color:var(--muted);flex-shrink:0}
+.score-badge b{color:var(--accent2)}
+
+/* SCREEN HELPER */
+.screen{display:none}
+.screen.active{display:block}
+
+/* PICKER */
+.picker-title{font-size:clamp(1.4rem,5vw,2rem);font-weight:800;letter-spacing:-.03em;margin-bottom:6px}
+.picker-subtitle{color:var(--muted);font-size:.82rem;margin-bottom:22px;font-family:'DM Mono',monospace}
+.cat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.cat-btn{
+  background:var(--card);border:2px solid var(--border);border-radius:14px;
+  padding:15px 14px;cursor:pointer;text-align:left;
+  transition:border-color .2s,background .2s,transform .1s;color:var(--text)
+}
+.cat-btn:hover{border-color:var(--accent);background:rgba(255,107,53,.06)}
+.cat-btn:active{transform:scale(.97)}
+.cat-btn.done{border-color:var(--correct);background:rgba(168,255,120,.05)}
+.cat-btn.done .cat-name{color:var(--correct)}
+.cat-name{font-weight:800;font-size:.92rem;display:block;margin-bottom:4px}
+.cat-meta{font-family:'DM Mono',monospace;font-size:.63rem;color:var(--muted)}
+.cat-score-pill{font-family:'DM Mono',monospace;font-size:.6rem;background:rgba(168,255,120,.15);color:var(--correct);padding:1px 6px;border-radius:10px;margin-left:5px}
+.all-btn{width:100%;font-family:'Syne',sans-serif;font-weight:700;font-size:.9rem;background:var(--accent);color:#fff;border:none;padding:14px;border-radius:14px;cursor:pointer;transition:background .2s,transform .1s;margin-top:4px}
+.all-btn:hover{background:#ff8354}
+.all-btn:active{transform:scale(.98)}
+
+/* CARD */
+.card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:22px 18px;position:relative;overflow:hidden}
+@media(min-width:400px){.card{padding:30px 26px}}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent),var(--accent2))}
+
+.quiz-cat-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.quiz-cat-label{font-family:'DM Mono',monospace;font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.quiz-cat-name{font-size:.95rem;font-weight:800;color:var(--accent);text-align:right;max-width:60%;word-break:break-word}
+
+.round-badge{font-family:'DM Mono',monospace;font-size:.65rem;color:var(--wrong);background:rgba(255,77,109,.1);border:1px solid rgba(255,77,109,.2);padding:2px 8px;border-radius:10px;display:inline-block;margin-bottom:10px}
+
+.card-hint{font-family:'DM Mono',monospace;font-size:.65rem;letter-spacing:.1em;color:var(--muted);text-transform:uppercase;margin-bottom:10px}
+.word-display{font-size:clamp(1.5rem,9vw,3.5rem);font-weight:800;letter-spacing:-.03em;line-height:1.15;margin-bottom:14px;word-break:break-word;hyphens:auto;overflow-wrap:anywhere}
+.word-display.long{font-size:clamp(1.2rem,6.5vw,2.6rem)}
+.word-display.vlong{font-size:clamp(1rem,5.5vw,2rem)}
+
+.streaks{display:flex;gap:5px;margin-bottom:16px;flex-wrap:wrap}
+.streak-dot{width:10px;height:10px;border-radius:50%;background:var(--border);transition:background .3s;flex-shrink:0}
+.streak-dot.c{background:var(--correct)}
+.streak-dot.w{background:var(--wrong)}
+
+.input-row{display:flex;gap:10px;align-items:stretch}
+.answer-input{
+  flex:1;min-width:0;font-family:'DM Mono',monospace;font-size:1rem;
+  background:var(--surface);border:2px solid var(--border);border-radius:12px;
+  padding:13px 14px;color:var(--text);outline:none;
+  transition:border-color .2s,box-shadow .2s;-webkit-appearance:none
+}
+.answer-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(255,107,53,.12)}
+.answer-input.correct{border-color:var(--correct);box-shadow:0 0 0 3px rgba(168,255,120,.12);background:rgba(168,255,120,.05)}
+.answer-input.wrong{border-color:var(--wrong);box-shadow:0 0 0 3px rgba(255,77,109,.12);background:rgba(255,77,109,.05);animation:shake .35s ease}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-7px)}40%{transform:translateX(7px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
+
+.submit-btn{font-family:'Syne',sans-serif;font-weight:700;font-size:.88rem;background:var(--accent);color:#fff;border:none;border-radius:12px;padding:13px 18px;cursor:pointer;transition:background .2s,transform .1s;white-space:nowrap;flex-shrink:0}
+.submit-btn:hover{background:#ff8354}
+.submit-btn:active{transform:scale(.97)}
+
+.feedback{margin-top:14px;padding:12px 15px;border-radius:12px;font-size:.86rem;font-weight:700;display:none;align-items:center;gap:8px;word-break:break-word}
+.feedback.show{display:flex;animation:fadeIn .25s ease}
+.feedback.correct-fb{background:rgba(168,255,120,.1);border:1px solid rgba(168,255,120,.3);color:var(--correct)}
+.feedback.wrong-fb{background:rgba(255,77,109,.1);border:1px solid rgba(255,77,109,.3);color:var(--wrong)}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+
+.action-row{display:flex;gap:10px;margin-top:14px}
+.next-btn{flex:1;font-family:'Syne',sans-serif;font-weight:700;font-size:.9rem;background:transparent;border:2px solid var(--border);color:var(--text);padding:13px;border-radius:12px;cursor:pointer;transition:border-color .2s,background .2s;display:none}
+.next-btn:hover{border-color:var(--accent);background:rgba(255,107,53,.06)}
+.next-btn.show{display:block;animation:fadeIn .25s ease}
+.back-btn{font-family:'Syne',sans-serif;font-weight:700;font-size:.8rem;background:transparent;color:var(--muted);border:2px solid var(--border);padding:13px 14px;border-radius:12px;cursor:pointer;transition:border-color .2s,color .2s;white-space:nowrap;flex-shrink:0;display:none}
+.back-btn:hover{border-color:var(--muted);color:var(--text)}
+.back-btn.show{display:block;animation:fadeIn .25s ease}
+
+/* RESULTS */
+.results-inner{text-align:center;padding:14px 0}
+.results-emoji{font-size:3.2rem;margin-bottom:10px}
+.results-title{font-size:clamp(1.5rem,6vw,2rem);font-weight:800;letter-spacing:-.03em;margin-bottom:4px}
+.results-cat{font-family:'DM Mono',monospace;font-size:.75rem;color:var(--accent);margin-bottom:10px}
+.results-score{font-family:'DM Mono',monospace;font-size:clamp(2.5rem,10vw,3.5rem);font-weight:500;color:var(--accent);margin:10px 0}
+.results-detail{color:var(--muted);font-size:.85rem;margin-bottom:22px}
+.results-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.btn-primary{font-family:'Syne',sans-serif;font-weight:800;font-size:.92rem;background:var(--accent);color:#fff;border:none;padding:14px 24px;border-radius:14px;cursor:pointer;transition:background .2s,transform .1s}
+.btn-primary:hover{background:#ff8354}
+.btn-primary:active{transform:scale(.97)}
+.btn-secondary{font-family:'Syne',sans-serif;font-weight:700;font-size:.92rem;background:transparent;color:var(--text);border:2px solid var(--border);padding:14px 24px;border-radius:14px;cursor:pointer;transition:border-color .2s,background .2s}
+.btn-secondary:hover{border-color:var(--accent);background:rgba(255,107,53,.06)}
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="logo">słówka<span>.</span></div>
+    <div class="progress-wrap">
+      <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+      <span class="progress-label" id="progressLabel"></span>
+    </div>
+    <div class="score-badge">✓ <b id="scoreDisplay">0</b></div>
+  </header>
+
+  <!-- SCREEN: PICKER -->
+  <div id="screenPicker" class="screen active">
+    <p class="picker-title">Wybierz kategorię</p>
+    <p class="picker-subtitle">lub zagraj wszystkie naraz</p>
+    <div class="cat-grid" id="catGrid"></div>
+    <button class="all-btn" id="allBtn">▶ Wszystkie słówka</button>
+  </div>
+
+  <!-- SCREEN: QUIZ -->
+  <div id="screenQuiz" class="screen">
+    <div class="card">
+      <div class="quiz-cat-header">
+        <span class="quiz-cat-label">Kategoria</span>
+        <span class="quiz-cat-name" id="quizCatName"></span>
+      </div>
+      <div id="roundBadge" class="round-badge" style="display:none">Powtórka błędów</div>
+      <div class="card-hint">Przetłumacz na angielski</div>
+      <div class="word-display" id="wordDisplay">-</div>
+      <div class="streaks" id="streaks"></div>
+      <div class="input-row">
+        <input type="text" class="answer-input" id="answerInput" placeholder="po angielsku..."
+          autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+        <button class="submit-btn" id="submitBtn">OK</button>
+      </div>
+      <div class="feedback" id="feedback"></div>
+      <div class="action-row">
+        <button class="next-btn" id="nextBtn">Następne →</button>
+        <button class="back-btn" id="backBtn">↩ Kategorie</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCREEN: RESULTS -->
+  <div id="screenResults" class="screen">
+    <div class="card">
+      <div class="results-inner">
+        <div class="results-emoji" id="resultsEmoji">&#x1F389;</div>
+        <div class="results-title" id="resultsTitle">Koniec!</div>
+        <div class="results-cat" id="resultsCat"></div>
+        <div class="results-score" id="finalScore"></div>
+        <div class="results-detail" id="resultsDetail"></div>
+        <div class="results-actions" id="resultsActions"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+var words = [
+  {pl:"lekkoatletyka", en:"athletics", cat:"Dyscypliny sportowe"},
+  {pl:"koszykówka", en:"basketball", cat:"Dyscypliny sportowe"},
+  {pl:"boks", en:"boxing", cat:"Dyscypliny sportowe"},
+  {pl:"nurkowanie", en:"diving", cat:"Dyscypliny sportowe"},
+  {pl:"szermierka", en:"fencing", cat:"Dyscypliny sportowe"},
+  {pl:"piłka nożna", en:"football/soccer", cat:"Dyscypliny sportowe"},
+  {pl:"golf", en:"golf", cat:"Dyscypliny sportowe"},
+  {pl:"skok wzwyż", en:"high jump", cat:"Dyscypliny sportowe"},
+  {pl:"hokej", en:"hockey", cat:"Dyscypliny sportowe"},
+  {pl:"wyścigi konne", en:"horse racing", cat:"Dyscypliny sportowe"},
+  {pl:"kajakarstwo", en:"kayaking", cat:"Dyscypliny sportowe"},
+  {pl:"skok w dal", en:"long jump", cat:"Dyscypliny sportowe"},
+  {pl:"wyścigi motocyklowe", en:"motor racing", cat:"Dyscypliny sportowe"},
+  {pl:"jazda na wrotkach", en:"roller skating", cat:"Dyscypliny sportowe"},
+  {pl:"żeglarstwo", en:"sailing", cat:"Dyscypliny sportowe"},
+  {pl:"jazda na deskorolce", en:"skateboarding", cat:"Dyscypliny sportowe"},
+  {pl:"skoki narciarskie", en:"ski jumping", cat:"Dyscypliny sportowe"},
+  {pl:"narciarstwo", en:"skiing", cat:"Dyscypliny sportowe"},
+  {pl:"jazda na snowboardzie", en:"snowboarding", cat:"Dyscypliny sportowe"},
+  {pl:"sporty", en:"sports", cat:"Dyscypliny sportowe"},
+  {pl:"sprint", en:"sprint", cat:"Dyscypliny sportowe"},
+  {pl:"pływanie", en:"swimming", cat:"Dyscypliny sportowe"},
+  {pl:"tenis stołowy", en:"table tennis", cat:"Dyscypliny sportowe"},
+  {pl:"tenis", en:"tennis", cat:"Dyscypliny sportowe"},
+  {pl:"siatkówka", en:"volleyball", cat:"Dyscypliny sportowe"},
+  {pl:"windsurfing", en:"windsurfing", cat:"Dyscypliny sportowe"},
+  {pl:"łyżwiarstwo figurowe", en:"figure skating", cat:"Dyscypliny sportowe"},
+  {pl:"łyżwiarstwo szybkie", en:"speed skating", cat:"Dyscypliny sportowe"},
+  {pl:"uprawiać aerobik", en:"do aerobics", cat:"Uprawianie sportu"},
+  {pl:"uprawiać lekkoatletykę", en:"do athletics", cat:"Uprawianie sportu"},
+  {pl:"uprawiać boks/dżudo/karate", en:"do boxing/judo/karate", cat:"Uprawianie sportu"},
+  {pl:"wykonywać ćwiczenia", en:"do exercise", cat:"Uprawianie sportu"},
+  {pl:"trenować skok wzwyż/w dal", en:"do high jump/long jump", cat:"Uprawianie sportu"},
+  {pl:"uprawiać jogę", en:"do yoga", cat:"Uprawianie sportu"},
+  {pl:"jechać na rowerze", en:"go cycling", cat:"Uprawianie sportu"},
+  {pl:"nurkować", en:"go diving", cat:"Uprawianie sportu"},
+  {pl:"pływać kajakiem", en:"go kayaking", cat:"Uprawianie sportu"},
+  {pl:"jeździć na wrotkach", en:"go roller skating", cat:"Uprawianie sportu"},
+  {pl:"jeździć na deskorolce", en:"go skateboarding", cat:"Uprawianie sportu"},
+  {pl:"jeździć na nartach", en:"go skiing/snowboarding", cat:"Uprawianie sportu"},
+  {pl:"uprawiać surfing/windsurfing", en:"go surfing/windsurfing", cat:"Uprawianie sportu"},
+  {pl:"lekkoatleta/lekkoatletka", en:"athlete", cat:"Sportowcy"},
+  {pl:"bokser/bokserka", en:"boxer", cat:"Sportowcy"},
+  {pl:"piłkarz/piłkarka", en:"football player", cat:"Sportowcy"},
+  {pl:"bramkarz/bramkarka", en:"goalkeeper", cat:"Sportowcy"},
+  {pl:"golfista/golfistka", en:"golfer", cat:"Sportowcy"},
+  {pl:"hokeista/hokeistka", en:"hockey player", cat:"Sportowcy"},
+  {pl:"dżokej", en:"jockey", cat:"Sportowcy"},
+  {pl:"kierowca rajdowy", en:"racing driver", cat:"Sportowcy"},
+  {pl:"biegacz/biegaczka", en:"runner", cat:"Sportowcy"},
+  {pl:"łyżwiarz/łyżwiarka", en:"skater", cat:"Sportowcy"},
+  {pl:"narciarz/narciarka", en:"skier", cat:"Sportowcy"},
+  {pl:"skoczek narciarski", en:"ski jumper", cat:"Sportowcy"},
+  {pl:"pływak/pływaczka", en:"swimmer", cat:"Sportowcy"},
+  {pl:"tenisista/tenisistka", en:"tennis player", cat:"Sportowcy"},
+  {pl:"kręgielnia", en:"bowling alley", cat:"Miejsca sportowe"},
+  {pl:"tor wyścigowy konny", en:"course", cat:"Miejsca sportowe"},
+  {pl:"kort tenisowy", en:"court", cat:"Miejsca sportowe"},
+  {pl:"boisko do piłki nożnej", en:"football pitch", cat:"Miejsca sportowe"},
+  {pl:"pole golfowe", en:"golf course", cat:"Miejsca sportowe"},
+  {pl:"lodowisko", en:"ice rink", cat:"Miejsca sportowe"},
+  {pl:"basen", en:"pool", cat:"Miejsca sportowe"},
+  {pl:"ring bokserski", en:"ring", cat:"Miejsca sportowe"},
+  {pl:"stok narciarski", en:"slope", cat:"Miejsca sportowe"},
+  {pl:"stadion", en:"stadium", cat:"Miejsca sportowe"},
+  {pl:"bieżnia/tor wyścigowy", en:"track/racetrack", cat:"Miejsca sportowe"},
+  {pl:"rakieta do tenisa", en:"bat/racket", cat:"Sprzęt sportowy"},
+  {pl:"strój kąpielowy", en:"costume", cat:"Sprzęt sportowy"},
+  {pl:"sprzęt", en:"equipment", cat:"Sprzęt sportowy"},
+  {pl:"słupki bramki", en:"goalposts", cat:"Sprzęt sportowy"},
+  {pl:"okulary pływackie", en:"goggles", cat:"Sprzęt sportowy"},
+  {pl:"kask", en:"helmet", cat:"Sprzęt sportowy"},
+  {pl:"łyżwy", en:"ice skates", cat:"Sprzęt sportowy"},
+  {pl:"maska", en:"mask", cat:"Sprzęt sportowy"},
+  {pl:"siatka", en:"net", cat:"Sprzęt sportowy"},
+  {pl:"rolki", en:"rollerblades", cat:"Sprzęt sportowy"},
+  {pl:"dres", en:"tracksuit", cat:"Sprzęt sportowy"},
+  {pl:"skoki na bungee", en:"bungee jumping", cat:"Sporty ekstremalne"},
+  {pl:"chodzenie po jaskiniach", en:"caving", cat:"Sporty ekstremalne"},
+  {pl:"sport ekstremalny", en:"extreme sport", cat:"Sporty ekstremalne"},
+  {pl:"paralotniarstwo", en:"paragliding", cat:"Sporty ekstremalne"},
+  {pl:"wspinaczka skałkowa", en:"rock climbing", cat:"Sporty ekstremalne"},
+  {pl:"spadochroniarstwo", en:"skydiving", cat:"Sporty ekstremalne"},
+  {pl:"spływ górski", en:"white-water rafting", cat:"Sporty ekstremalne"},
+  {pl:"mistrz/mistrzyni", en:"champion", cat:"Zawody sportowe"},
+  {pl:"mistrzostwa", en:"championships", cat:"Zawody sportowe"},
+  {pl:"mistrzostwa świata", en:"world championships", cat:"Zawody sportowe"},
+  {pl:"trener/trenerka", en:"coach", cat:"Zawody sportowe"},
+  {pl:"komentować zawody", en:"commentate", cat:"Zawody sportowe"},
+  {pl:"rywalizować o coś", en:"compete for sth", cat:"Zawody sportowe"},
+  {pl:"zawody/konkurs", en:"competition", cat:"Zawody sportowe"},
+  {pl:"zawodnik/zawodniczka", en:"contestant/competitor", cat:"Zawody sportowe"},
+  {pl:"puchar/nagroda", en:"cup", cat:"Zawody sportowe"},
+  {pl:"finał", en:"final", cat:"Zawody sportowe"},
+  {pl:"gra", en:"game", cat:"Zawody sportowe"},
+  {pl:"mecz", en:"match", cat:"Zawody sportowe"},
+  {pl:"medal", en:"medal", cat:"Zawody sportowe"},
+  {pl:"złoty medal", en:"gold medal", cat:"Zawody sportowe"},
+  {pl:"srebrny medal", en:"silver medal", cat:"Zawody sportowe"},
+  {pl:"brązowy medal", en:"bronze medal", cat:"Zawody sportowe"},
+  {pl:"olimpiada", en:"Olympic Games", cat:"Zawody sportowe"},
+  {pl:"gracz/zawodnik", en:"player", cat:"Zawody sportowe"},
+  {pl:"wyścig", en:"race", cat:"Zawody sportowe"},
+  {pl:"sędzia sportowy", en:"referee", cat:"Zawody sportowe"},
+  {pl:"półfinał", en:"semi-final", cat:"Zawody sportowe"},
+  {pl:"widz", en:"spectator", cat:"Zawody sportowe"},
+  {pl:"wydarzenie sportowe", en:"sporting event", cat:"Zawody sportowe"},
+  {pl:"kibic", en:"supporter/fan", cat:"Zawody sportowe"},
+  {pl:"uczestniczyć w", en:"take part in", cat:"Zawody sportowe"},
+  {pl:"odbywać się", en:"take place", cat:"Zawody sportowe"},
+  {pl:"turniej", en:"tournament", cat:"Zawody sportowe"},
+  {pl:"trofeum", en:"trophy", cat:"Zawody sportowe"},
+  {pl:"łapać piłkę", en:"catch a ball", cat:"Działania w sporcie"},
+  {pl:"kopać piłkę", en:"kick a ball", cat:"Działania w sporcie"},
+  {pl:"rzucać piłkę do kosza", en:"throw a ball into the basket", cat:"Działania w sporcie"},
+  {pl:"pokonać przeciwną drużynę", en:"beat the other team", cat:"Działania w sporcie"},
+  {pl:"pokonać przeciwnika", en:"beat the opponent", cat:"Działania w sporcie"},
+  {pl:"remis", en:"draw", cat:"Działania w sporcie"},
+  {pl:"doznawać kontuzji", en:"get injured", cat:"Działania w sporcie"},
+  {pl:"zranić się", en:"hurt yourself", cat:"Działania w sporcie"},
+  {pl:"zakwalifikować się do drużyny", en:"qualify for the team", cat:"Działania w sporcie"},
+  {pl:"zająć drugie miejsce", en:"be runner-up", cat:"Działania w sporcie"},
+  {pl:"obronić gola", en:"save a goal", cat:"Działania w sporcie"},
+  {pl:"wynik/rezultat", en:"score", cat:"Działania w sporcie"},
+  {pl:"zdobyć bramkę/punkt", en:"score a goal/a point", cat:"Działania w sporcie"},
+  {pl:"strzelać", en:"shoot", cat:"Działania w sporcie"},
+  {pl:"odnieść sukces", en:"succeed", cat:"Działania w sporcie"},
+  {pl:"telewidz", en:"viewer", cat:"Działania w sporcie"},
+  {pl:"zwyciężać", en:"win", cat:"Działania w sporcie"},
+  {pl:"zwycięzca/zwycięzczyni", en:"winner", cat:"Działania w sporcie"},
+  {pl:"osiągać dobre wyniki", en:"achieve good results", cat:"Sport wyczynowy"},
+  {pl:"amatorski", en:"amateur", cat:"Sport wyczynowy"},
+  {pl:"podejście", en:"approach", cat:"Sport wyczynowy"},
+  {pl:"być pod presją", en:"be under pressure", cat:"Sport wyczynowy"},
+  {pl:"sport wyczynowy", en:"competitive sport", cat:"Sport wyczynowy"},
+  {pl:"spełniać czyjeś marzenia", en:"fulfil one's dreams", cat:"Sport wyczynowy"},
+  {pl:"przechodzić na specjalną dietę", en:"go on a special diet", cat:"Sport wyczynowy"},
+  {pl:"zdrowy tryb życia", en:"healthy lifestyle", cat:"Sport wyczynowy"},
+  {pl:"poprawiać wyniki", en:"improve performance", cat:"Sport wyczynowy"},
+  {pl:"dołączać do drużyny", en:"join a team", cat:"Sport wyczynowy"},
+  {pl:"sport rekreacyjny", en:"non-competitive sport", cat:"Sport wyczynowy"},
+  {pl:"przeciwnik/przeciwniczka", en:"opponent", cat:"Sport wyczynowy"},
+  {pl:"zawodowy", en:"professional", cat:"Sport wyczynowy"},
+  {pl:"przejść na zawodowstwo", en:"turn professional", cat:"Sport wyczynowy"},
+  {pl:"brać doping", en:"take drugs", cat:"Trening"},
+  {pl:"trenować", en:"train", cat:"Trening"},
+  {pl:"trening", en:"training/practice", cat:"Trening"},
+  {pl:"program treningowy", en:"training schedule", cat:"Trening"},
+  {pl:"eliminacje do zawodów", en:"trials", cat:"Trening"},
+  {pl:"odkładać/oszczędzać", en:"set aside", cat:"Zwroty z SET"},
+  {pl:"odznaczać", en:"set back", cat:"Zwroty z SET"},
+  {pl:"wyruszać", en:"set off/set out", cat:"Zwroty z SET"},
+  {pl:"zakładać/otwierać/rozpoczynać", en:"set up", cat:"Zwroty z SET"},
+];
+
+var catEmoji = {
+  "Owoce":"🍎","Zwierzeta":"🐾","Natura":"🌿","Pojazdy":"🚗",
+  "Miejsca":"🏙","Jedzenie":"🍽","Technologia":"💻","Ludzie":"👥"
+};
+
+var categoryOrder = [];
+(function(){
+  var seen = {};
+  for(var i=0;i<words.length;i++){
+    if(!seen[words[i].cat]){seen[words[i].cat]=true;categoryOrder.push(words[i].cat)}
+  }
+})();
+
+// scores per category: {correct, total, done}
+var catData = {};
+for(var i=0;i<categoryOrder.length;i++){
+  var c = categoryOrder[i];
+  var total = 0;
+  for(var j=0;j<words.length;j++){if(words[j].cat===c)total++;}
+  catData[c] = {correct:0, total:total, done:false};
+}
+
+// quiz state
+var queue = [];
+var wrongQueue = [];
+var current = 0;
+var sessionCorrect = 0;
+var sessionTotal = 0;
+var answered = false;
+var activeCategory = null;
+var isRetryRound = false;
+var historyBits = []; // per current queue: true/false
+
+function shuffle(arr){
+  var a = arr.slice();
+  for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;}
+  return a;
+}
+
+function showScreen(id){
+  var screens = ['screenPicker','screenQuiz','screenResults'];
+  for(var i=0;i<screens.length;i++){
+    document.getElementById(screens[i]).className = 'screen' + (screens[i]===id?' active':'');
+  }
+  document.getElementById('progressLabel').textContent = '';
+  document.getElementById('progressFill').style.width = '0%';
+  document.getElementById('scoreDisplay').textContent = '0';
+}
+
+/* ─── PICKER ─── */
+function showPicker(){
+  showScreen('screenPicker');
+  renderCatGrid();
+}
+
+function renderCatGrid(){
+  var html = '';
+  for(var i=0;i<categoryOrder.length;i++){
+    var cat = categoryOrder[i];
+    var d = catData[cat];
+    var em = catEmoji[cat] || '';
+    var pill = d.done ? '<span class="cat-score-pill">'+d.correct+'/'+d.total+'</span>' : '';
+    var doneClass = d.done ? ' done' : '';
+    html += '<button class="cat-btn'+doneClass+'" data-cat="'+cat+'">'
+          + '<span class="cat-name">'+em+' '+cat+pill+'</span>'
+          + '<span class="cat-meta">'+d.total+' słów'+(d.done?' · ukończone':'')+'</span>'
+          + '</button>';
+  }
+  var grid = document.getElementById('catGrid');
+  grid.innerHTML = html;
+  var btns = grid.querySelectorAll('.cat-btn');
+  for(var i=0;i<btns.length;i++){
+    btns[i].addEventListener('click', function(){
+      startQuiz(this.getAttribute('data-cat'));
+    });
+  }
+}
+
+document.getElementById('allBtn').addEventListener('click', function(){ startQuiz('__all__'); });
+
+/* ─── QUIZ ─── */
+function startQuiz(category){
+  activeCategory = category;
+  isRetryRound = false;
+  var pool = category === '__all__' ? words : words.filter(function(w){return w.cat===category;});
+  queue = shuffle(pool);
+  wrongQueue = [];
+  current = 0;
+  sessionCorrect = 0;
+  sessionTotal = queue.length;
+  answered = false;
+  historyBits = [];
+
+  showScreen('screenQuiz');
+  document.getElementById('quizCatName').textContent = category === '__all__' ? 'Wszystkie' : category;
+  document.getElementById('roundBadge').style.display = 'none';
+  renderQuestion();
+}
+
+function renderQuestion(){
+  answered = false;
+  var w = queue[current];
+
+  var wd = document.getElementById('wordDisplay');
+  wd.textContent = w.pl;
+  wd.className = 'word-display' + (w.pl.length > 16 ? ' vlong' : w.pl.length > 10 ? ' long' : '');
+
+  var inp = document.getElementById('answerInput');
+  inp.value = ''; inp.className = 'answer-input'; inp.disabled = false;
+  document.getElementById('feedback').className = 'feedback';
+  document.getElementById('nextBtn').className = 'next-btn';
+  document.getElementById('backBtn').className = 'back-btn';
+
+  document.getElementById('progressLabel').textContent = (current+1)+' / '+queue.length;
+  document.getElementById('progressFill').style.width = (current/queue.length*100)+'%';
+  document.getElementById('scoreDisplay').textContent = sessionCorrect;
+
+  // streaks dots
+  var html = '';
+  for(var i=0;i<queue.length;i++){
+    var cls = i < current ? (historyBits[i] ? ' c' : ' w') : '';
+    html += '<div class="streak-dot'+cls+'"></div>';
+  }
+  document.getElementById('streaks').innerHTML = html;
+
+  setTimeout(function(){ document.getElementById('answerInput').focus(); }, 80);
+}
+
+function check(){
+  if(answered) return;
+  var inp = document.getElementById('answerInput');
+  var val = inp.value.trim().toLowerCase();
+  if(!val) return;
+  answered = true;
+
+  var correct = queue[current].en.toLowerCase();
+  var isCorrect = val === correct;
+  inp.disabled = true;
+  var fb = document.getElementById('feedback');
+
+  if(isCorrect){
+    sessionCorrect++;
+    historyBits[current] = true;
+    inp.classList.add('correct');
+    fb.className = 'feedback correct-fb show';
+    fb.innerHTML = '<span>✓</span> Świetnie! <b>'+queue[current].en+'</b>';
+    document.getElementById('scoreDisplay').textContent = sessionCorrect;
+  } else {
+    historyBits[current] = false;
+    wrongQueue.push(queue[current]);
+    inp.classList.add('wrong');
+    fb.className = 'feedback wrong-fb show';
+    fb.innerHTML = '<span>✗</span> Poprawna: <b>'+queue[current].en+'</b>';
+  }
+
+  document.getElementById('progressFill').style.width = ((current+1)/queue.length*100)+'%';
+  document.getElementById('nextBtn').className = 'next-btn show';
+  document.getElementById('backBtn').className = 'back-btn show';
+}
+
+function next(){
+  current++;
+  if(current >= queue.length){
+    // end of round — if there are wrong ones, restart with only them
+    if(wrongQueue.length > 0){
+      startRetryRound();
+    } else {
+      showResults();
+    }
+  } else {
+    renderQuestion();
+  }
+}
+
+function startRetryRound(){
+  isRetryRound = true;
+  queue = shuffle(wrongQueue);
+  wrongQueue = [];
+  current = 0;
+  answered = false;
+  historyBits = [];
+  // keep sessionCorrect accumulating
+
+  document.getElementById('roundBadge').style.display = 'block';
+  document.getElementById('feedback').className = 'feedback';
+  document.getElementById('nextBtn').className = 'next-btn';
+  document.getElementById('backBtn').className = 'back-btn';
+  renderQuestion();
+}
+
+function showResults(){
+  // save category score
+  if(activeCategory !== '__all__'){
+    catData[activeCategory].correct = sessionCorrect;
+    catData[activeCategory].total = sessionTotal;
+    catData[activeCategory].done = true;
+  }
+
+  showScreen('screenResults');
+  var pct = Math.round(sessionCorrect / sessionTotal * 100);
+  document.getElementById('resultsEmoji').textContent = pct>=80?'🏆':pct>=50?'💪':'📚';
+  document.getElementById('resultsTitle').textContent = 'Koniec!';
+  document.getElementById('resultsCat').textContent = activeCategory==='__all__' ? 'Wszystkie słówka' : activeCategory;
+  document.getElementById('finalScore').textContent = sessionCorrect+' / '+sessionTotal;
+  document.getElementById('resultsDetail').textContent = 'Wynik: '+pct+'% — '+(pct>=80?'Znakomity wynik! 🔥':pct>=50?'Nieźle, ćwicz dalej!':'Więcej nauki i do przodu!');
+
+  // find next category
+  var nextCat = null;
+  if(activeCategory !== '__all__'){
+    var idx = categoryOrder.indexOf(activeCategory);
+    if(idx >= 0 && idx < categoryOrder.length-1){
+      nextCat = categoryOrder[idx+1];
+    }
+  }
+
+  var actionsHtml = '';
+  // retry this category
+  actionsHtml += '<button class="btn-primary" id="retryBtn">Powtórz</button>';
+  // next category button
+  if(nextCat){
+    actionsHtml += '<button class="btn-primary" id="nextCatBtn">'+
+      (catEmoji[nextCat]||'')+' '+nextCat+' &rarr;</button>';
+  }
+  actionsHtml += '<button class="btn-secondary" id="pickerBtn">← Kategorie</button>';
+
+  document.getElementById('resultsActions').innerHTML = actionsHtml;
+
+  document.getElementById('retryBtn').addEventListener('click', function(){
+    startQuiz(activeCategory);
+  });
+  if(nextCat){
+    document.getElementById('nextCatBtn').addEventListener('click', function(){
+      startQuiz(nextCat);
+    });
+  }
+  document.getElementById('pickerBtn').addEventListener('click', showPicker);
+}
+
+/* ─── EVENTS ─── */
+document.getElementById('submitBtn').addEventListener('click', check);
+document.getElementById('nextBtn').addEventListener('click', next);
+document.getElementById('backBtn').addEventListener('click', showPicker);
+
+// Enter always works: sprawdź jeśli nie odpowiedziano, następne jeśli odpowiedziano
+document.addEventListener('keydown', function(e){
+  if(e.key !== 'Enter') return;
+  // only when quiz screen is active
+  if(document.getElementById('screenQuiz').className.indexOf('active') === -1) return;
+  e.preventDefault();
+  if(answered){ next(); } else { check(); }
+});
+
+// keep focus on input after check so Enter works without clicking
+function refocusInput(){
+  var inp = document.getElementById('answerInput');
+  // small delay so click events finish first
+  setTimeout(function(){ inp.focus(); }, 50);
+}
+
+// init
+showPicker();
+</script>
+</body>
+</html>
