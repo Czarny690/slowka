@@ -8,7 +8,25 @@
     "lang": "en",
     "question": "Przetłumacz na angielski"
   },
- {
+  {
+    "id": "angielski-1.12",
+    "name": "Angielski – 1.12",
+    "emoji": "🧠",
+    "desc": "Umiejętności, szkoła, tożsamość, phrasal verbs",
+    "file": "data/angielski-1.12.json",
+    "lang": "en",
+    "question": "Przetłumacz na angielski"
+  },
+  {
+    "id": "niemiecki-podstawy",
+    "name": "Niemiecki – Podstawy",
+    "emoji": "🇩🇪",
+    "desc": "Podstawowe słówka po niemiecku",
+    "file": "data/niemiecki-podstawy.json",
+    "lang": "de",
+    "question": "Przetłumacz na niemiecki"
+  },
+  {
     "id": "niemiecki-einkaufen",
     "name": "Niemiecki – Einkaufen",
     "emoji": "🛍️",
@@ -25,14 +43,5 @@
     "file": "data/historia-polska.json",
     "lang": "pl",
     "question": "Podaj odpowiedź"
-  },
-    {
-    "id": "angielski-1.12",
-    "name": "Angielski – 1.12",
-    "emoji": "🤠",
-    "desc": "Słownictwo z działu 1",
-    "file": "data/angielski-1.12.json",
-    "lang": "en",
-    "question": "Przetłumacz na angielski"
-  },
+  }
 ]
