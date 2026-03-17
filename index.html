@@ -128,6 +128,24 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 .submit-btn:hover{background:#ff8354}
 .submit-btn:active{transform:scale(.97)}
 
+/* ── UMLAUT BAR ── */
+.umlaut-bar{
+  display:none;
+  gap:6px;
+  margin-top:10px;
+  flex-wrap:wrap;
+}
+.umlaut-bar.visible{display:flex;animation:fadeIn .2s ease}
+.umlaut-btn{
+  font-family:'DM Mono',monospace;font-size:.88rem;font-weight:500;
+  background:var(--surface);border:2px solid var(--border);
+  color:var(--text);border-radius:8px;padding:6px 11px;
+  cursor:pointer;transition:border-color .15s,background .15s,transform .1s;
+  line-height:1;
+}
+.umlaut-btn:hover{border-color:var(--accent);background:rgba(255,107,53,.1)}
+.umlaut-btn:active{transform:scale(.9)}
+
 .feedback{margin-top:14px;padding:12px 15px;border-radius:12px;font-size:.86rem;font-weight:700;display:none;align-items:center;gap:8px;word-break:break-word}
 .feedback.show{display:flex;animation:fadeIn .25s ease}
 .feedback.correct-fb{background:rgba(168,255,120,.1);border:1px solid rgba(168,255,120,.3);color:var(--correct)}
@@ -206,6 +224,16 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
           autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
         <button class="submit-btn" id="submitBtn">OK</button>
       </div>
+      <!-- UMLAUT BAR -->
+      <div class="umlaut-bar" id="umlautBar">
+        <button class="umlaut-btn" data-char="ä">ä</button>
+        <button class="umlaut-btn" data-char="ö">ö</button>
+        <button class="umlaut-btn" data-char="ü">ü</button>
+        <button class="umlaut-btn" data-char="Ä">Ä</button>
+        <button class="umlaut-btn" data-char="Ö">Ö</button>
+        <button class="umlaut-btn" data-char="Ü">Ü</button>
+        <button class="umlaut-btn" data-char="ß">ß</button>
+      </div>
       <div class="feedback" id="feedback"></div>
       <div class="action-row">
         <button class="next-btn" id="nextBtn">Następne →</button>
@@ -231,9 +259,9 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 </div>
 <script>
 // ─── STATE ───────────────────────────────────────────────
-var subjects = [];          // from subjects.json
-var activeSubject = null;   // current subject object
-var words = [];             // loaded words for active subject
+var subjects = [];
+var activeSubject = null;
+var words = [];
 var categoryOrder = [];
 var catData = {};
 
@@ -256,7 +284,37 @@ function showScreen(id){
   document.getElementById('progressLabel').textContent='';
   document.getElementById('progressFill').style.width='0%';
   document.getElementById('scoreDisplay').textContent='0';
+  // hide umlaut bar when leaving quiz
+  if(id !== 'screenQuiz') document.getElementById('umlautBar').className='umlaut-bar';
 }
+
+// ─── UMLAUT BAR ──────────────────────────────────────────
+var umlautBar = document.getElementById('umlautBar');
+var answerInput = document.getElementById('answerInput');
+
+// Show/hide bar based on active subject language
+function updateUmlautBar(){
+  if(activeSubject && activeSubject.lang === 'de'){
+    umlautBar.className = 'umlaut-bar visible';
+  } else {
+    umlautBar.className = 'umlaut-bar';
+  }
+}
+
+// Insert character at cursor position
+umlautBar.addEventListener('mousedown', function(e){
+  var btn = e.target.closest('.umlaut-btn');
+  if(!btn) return;
+  e.preventDefault(); // prevent input from losing focus
+  var ch = btn.getAttribute('data-char');
+  var start = answerInput.selectionStart;
+  var end = answerInput.selectionEnd;
+  var val = answerInput.value;
+  answerInput.value = val.slice(0, start) + ch + val.slice(end);
+  // move cursor after inserted char
+  answerInput.selectionStart = answerInput.selectionEnd = start + ch.length;
+  answerInput.focus();
+});
 
 // ─── LOAD subjects.json ───────────────────────────────────
 function loadSubjects(){
@@ -378,6 +436,7 @@ function startQuiz(category){
   current=0;sessionCorrect=0;sessionTotal=queue.length;answered=false;
 
   showScreen('screenQuiz');
+  updateUmlautBar();
   document.getElementById('quizCatName').textContent=category==='__all__'?'Wszystkie':category;
   document.getElementById('roundBadge').style.display='none';
   renderQuestion();
@@ -416,7 +475,6 @@ function check(){
   if(!val)return;
   answered=true;
 
-  // support multiple correct answers separated by /
   var correct=queue[current].en.toLowerCase();
   var variants=correct.split('/').map(function(v){return v.trim();});
   var isCorrect=variants.indexOf(val)!==-1;
