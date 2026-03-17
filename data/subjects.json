@@ -8,7 +8,7 @@
     "lang": "en",
     "question": "Przetłumacz na angielski"
   },
-    {
+  {
     "id": "angielski-1.12",
     "name": "Angielski – 1.12",
     "emoji": "🧠",
@@ -23,6 +23,15 @@
     "emoji": "🛍️",
     "desc": "Kapitel 3 – zakupy, sklepy, ubrania",
     "file": "data/niemiecki-einkaufen.json",
+    "lang": "de",
+    "question": "Przetłumacz na niemiecki"
+  },
+  {
+    "id": "niemiecki-kultur",
+    "name": "Niemiecki – Kultur",
+    "emoji": "🎭",
+    "desc": "Wydarzenia kulturalne, sztuka, muzyka",
+    "file": "data/niemiecki-kultur.json",
     "lang": "de",
     "question": "Przetłumacz na niemiecki"
   },
