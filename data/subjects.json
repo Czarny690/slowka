@@ -35,6 +35,15 @@
     "lang": "de",
     "question": "Przetłumacz na niemiecki"
   },
+    {
+    "id": "angielski-zywienie",
+    "name": "Angielski – Żywienie",
+    "emoji": 🍓",
+    "desc": "Artykuły spożywcze, owoce, diety",
+    "file": "data/angielski-zywienie.json",
+    "lang": "en",
+    "question": "Przetłumacz na angielski"
+  },
   {
     "id": "historia-polska",
     "name": "Historia – Polska",
