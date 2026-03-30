@@ -52,5 +52,14 @@
     "file": "data/historia-polska.json",
     "lang": "pl",
     "question": "Podaj odpowiedź"
+  },
+    {
+    "id": "irregular-verbs",
+    "name": "Angielski - Czasowniki nieregularne",
+    "emoji": "🐸",
+    "desc": "Czasowniki nieregularne w pierwszej, drugiej i trzeciej formie",
+    "file": "data/irregular-verbs.json",
+    "lang": "en",
+    "question": "Wpisz 3 formy"
   }
 ]
